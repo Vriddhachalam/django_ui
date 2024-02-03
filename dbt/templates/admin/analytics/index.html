@@ -1,0 +1,39 @@
+{% extends "admin/index.html" %}
+{% load i18n static %}
+<!-- {% load template-variables %}
+{% get_nav_items as nav_items %} -->
+
+{#{% block welcome-msg %}#}
+<!-- This block is left intentionally blank to remove the welcome message -->
+{#{% endblock %}#}
+
+
+{% block footer %}
+ <hr>
+ <p>Thanks for visiting my site.</p>
+{% endblock %}
+
+{#{% block userlinks %}#}
+<!-- This block is left intentionally blank to remove the user links -->
+<style>
+
+    .module h2, .module caption, .inline-group h2,#header
+    {   
+        margin: 0;
+        padding: 2px 5px 3px 5px;
+        font-size: 11px;
+        text-align: left;
+        font-weight: bold;
+        background: #9370DB url(../img/default-bg.gif) top left repeat-x;
+        color: #9370DB;
+    }
+
+</style>
+
+<style>
+    ul {
+      list-style-image: url('sqpurple.gif');
+    }
+    </style>
+
+{#{% endblock %}#}

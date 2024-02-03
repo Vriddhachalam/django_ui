@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.23.0/min/vs/loader.js"></script>
+</head>
+
+<body>
+
+    <div class="form-card">
+        <div
+            style="margin-bottom: 40px;font-weight:bold;font-family: Trebuchet MS, sans-serif;font-size: 40px; margin-left:1% ;">
+            Profile YML Editor</div>
+        <!-- <label for="environment" style="font-family: Trebuchet MS, sans-serif;">Select Environment:</label>
+        <select id="environment">
+            <option style="font-family: Trebuchet MS, sans-serif;" value="PROD">PROD</option>
+            <option style="font-family: Trebuchet MS, sans-serif;" value="DEV">DEV</option>
+        </select> -->
+
+        <!-- <div style="font-family: Trebuchet MS, sans-serif;margin-bottom: 20px; ">Select Environment:</div>    
+        <input type="radio" id="prod_radio" name="environment" value="PROD" >
+        <label for="prod_radio" style="font-family: Trebuchet MS, sans-serif;">PROD</label><br>
+        <input type="radio" id="dev_radio" name="environment" value="DEV">
+        <label for="dev_radio" style="font-family: Trebuchet MS, sans-serif;">DEV</label><br> -->
+
+
+        <!-- <button id="env_button" style="font-size:14px" class="button">Select Env</button> -->
+        <div style="display: flex; align-items: center;">
+            <div id="editor1" display="block"></div>
+            <div id="editor2" display="block"></div>
+        </div>
+        <div style="display: flex; align-items: center;">
+            <button id="save1" class="button"
+                style="display: flex; align-items: center;margin-top: 20px; margin-right: auto; margin-left: 5%;">Update
+                DEV</button>
+            <button id="save2" class="button"
+                style="display: flex; align-items: center;margin-top: 20px; margin-right: auto; margin-left: 5%;">Update
+                PROD</button>
+        </div>
+        <div id="auth_token" style="display: none;">{{ auth_token }}</div>
+    </div>
+    <script>
+        $(document).ready(function () {
+
+            var editor1
+            var editor2
+
+            // $('input[type="radio"][name="environment"]').change(function() {
+            //     var chosen_env = $(this).val();
+            //     console.log("Selected environment:", chosen_env);
+            // // });
+
+            // // $('#env_button').click(
+            // //     function () {
+            //         var environmentDict = { "DEV": 1, "PROD": 2 };
+            //         // var dropdown = document.getElementById("environment");
+            //         // var chosen_env = dropdown.options[dropdown.selectedIndex].value;
+            //         var chosen_env = $('input[name="environment"]:checked').val();
+
+
+            // var id = environmentDict[chosen_env]
+            // for (var id = 1; id <= 2; id++) {
+
+            //  function(){}   
+            console.log('hello')
+
+            // }
+
+
+
+            $.ajax({
+                url: 'admin/analytics/profileyaml/',
+                method: 'GET',
+                success: function (response) {
+                    var tempDiv = $('<div>');
+                    tempDiv.html(response);
+                    var csrfTokenInput = tempDiv.find('input[name="csrfmiddlewaretoken"]');
+                    if (csrfTokenInput.length > 0) {
+                        var csrfToken = csrfTokenInput.val();
+                        console.log("CSRF Token:", csrfToken);
+                    } else {
+                        console.log("CSRF token input field not found in the response.");
+                    }
+
+
+
+
+                    var id = 1
+                    var endpoint = 'api/profile_yaml/' + id + '/'
+                    var headers = {
+                        'accept': 'application/json',
+                        'Authorization': 'Token ' + $('#auth_token').text(),
+                        'Content-Type': 'application/json',
+                        'X-CSRFTOKEN': csrfToken
+                    };
+
+                    $.ajax({
+                        url: endpoint,
+                        method: 'GET',
+                        headers: headers,
+                        success: function (response) {
+                            console.log(response)
+                            // Handle successful response
+                            if (editor1) {
+                                editor1.dispose();
+                            }
+                            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.23.0/min/vs' } });
+                            require(['vs/editor/editor.main'], function () {
+
+                                var code = response.profile_yml
+                                // Initialize Monaco Editor
+                                editor1 = monaco.editor.create(document.getElementById('editor' + id), {
+                                    value: code,
+                                    language: 'yaml',
+                                    theme: 'vs-dark' // Change the theme as needed
+                                });
+
+
+                                $('#save' + id).click(function () {
+                                    var value = editor1.getValue();
+
+                                    var data = { "profile_yml": value, "name": id }
+                                    $.ajax({
+                                        url: endpoint,
+                                        method: 'PUT',
+                                        // method: 'GET',
+                                        // async: true, // Make the request synchronous
+                                        headers: headers,
+                                        data: JSON.stringify(data),
+                                        contentType: 'application/json',
+                                        success: function (response) {
+                                            console.log(response)
+                                            alert("Congrats!  Updated YML ")
+                                        }
+                                    })
+
+                                })
+
+                            });
+                        }
+                    });
+
+                    var id2 = '2'
+
+                    var endpoint = 'api/profile_yaml/' + id2 + '/'
+                    var headers = {
+                        'accept': 'application/json',
+                        'Authorization': 'Token ' + $('#auth_token').text(),
+                        'Content-Type': 'application/json',
+                        'X-CSRFTOKEN': csrfToken
+                    };
+
+                    $.ajax({
+                        url: endpoint,
+                        method: 'GET',
+                        headers: headers,
+                        success: function (response) {
+                            console.log(response)
+                            // Handle successful response
+                            if (editor2) {
+                                editor2.dispose();
+                            }
+                            require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.23.0/min/vs' } });
+                            require(['vs/editor/editor.main'], function () {
+
+                                var code = response.profile_yml
+                                // Initialize Monaco Editor
+                                editor2 = monaco.editor.create(document.getElementById('editor' + id2), {
+                                    value: code,
+                                    language: 'yaml',
+                                    theme: 'vs-dark' // Change the theme as needed
+                                });
+
+
+                                $('#save' + id2).click(function () {
+                                    var value = editor2.getValue();
+
+                                    var data = { "profile_yml": value, "name": id2 }
+                                    $.ajax({
+                                        url: endpoint,
+                                        method: 'PUT',
+                                        // method: 'GET',
+                                        // async: true, // Make the request synchronous
+                                        headers: headers,
+                                        data: JSON.stringify(data),
+                                        contentType: 'application/json',
+                                        success: function (response) {
+                                            console.log(response)
+                                            alert("Congrats!  Updated YML ")
+                                        }
+                                    })
+
+                                })
+
+                            });
+                        }
+                    });
+
+
+
+
+
+                }
+            });
+        });
+    </script>
+
+    <style>
+        .form-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 55px;
+            background-color: rgb(255, 255, 255);
+            /* color: white; */
+        }
+
+        #editor1 {
+            width: 600px;
+            height: 400px;
+            margin-left: auto;
+            margin-right: 100px;
+            margin-top: 20px;
+            /* border: 1px solid #ddd; */
+            border-radius: 5px;
+            /* padding: 25px; */
+        }
+
+        #editor2 {
+            width: 600px;
+            height: 400px;
+            margin-right: auto;
+            margin-top: 20px;
+            /* border: 1px solid #ddd; */
+            border-radius: 5px;
+            /* padding: 25px; */
+        }
+
+        .button {
+            background-color: rgb(55, 128, 55);
+            border: none;
+            color: white;
+            padding: 8px 24px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-family: Trebuchet MS, sans-serif;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+
+        .button {
+            transition-duration: 0.4s;
+        }
+
+        .button:hover {
+            background-color: #04AA6D;
+            /* Green */
+            color: white;
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+        }
+    </style>
+
+</body>
+
+</html>

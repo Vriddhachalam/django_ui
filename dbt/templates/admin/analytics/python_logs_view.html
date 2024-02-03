@@ -1,0 +1,69 @@
+{% load i18n static %}
+
+
+{% block content %}
+<html>
+<head> 
+    <H1> PYTHON LOGS </H1> 
+<style>
+        body {background-color:lightblue;}
+        table, th, td {
+            border-collapse: collapse; 
+            border: 1px solid blue;
+            }
+
+
+ 
+
+
+          
+          </style>
+          </head>
+          <body>
+          
+          
+          <table style="width:20%">
+
+            <tr>
+              <th>Command</th>
+              <th>Previous_Command</th>
+              <th>Success</th>
+              <th>fail_reason</th>
+              <th>repository_used_name</th>
+
+            </tr>
+        {% for item in my_data %}
+        
+       
+            <tr>
+                
+              <td><input type="checkbox" id="vehicle1" name="vehicle1" value="Bike">{{ item.command }}</td>
+              <td> {{ item.previous_command }}</td>
+              <td> {{ item.success }}</td>
+              <td> {{ item.fail_reason }}</td>
+              <td> {{ item.repository_used_name }}</td>
+            </tr>
+            
+        
+       
+       
+       <!-- <td><tr><li> Command: {{ item.command }}</li></tr></td><br>
+        <td><tr><li>Previous_Command: {{ item.previous_command }}</li></tr></td><br>
+            <li>Success: {{ item.success }}</li><br>
+            <li>Fail_reason:{{ item.fail_reason }}</li><br>
+            <li>repository_used_name{{ item.repository_used_name }}</li><br>
+            <li>created_at{{ item.created_at }}</li><br>
+            <li>Completed_at{{ item.completed_at }}</li></td> -->
+
+        {% endfor %} 
+    </table> 
+    </body>
+    </html>
+{% endblock %}
+
+
+
+{% block footer %}
+ <hr>
+ <p>Thanks for visiting my site.</p>
+{% endblock %}

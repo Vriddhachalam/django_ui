@@ -1,0 +1,21 @@
+{% extends "admin/change_form.html" %}
+{% block coltype %}colMS{% endblock %}
+{% load template-variables %}
+{% get_nav_items as nav_items %}
+
+{% block sidebar %}
+<div id="content-related">
+    <div id="navcontainer">
+        <ul id="navlist">
+            
+            <!-- <li><a href="../merge/">Merge {{ form.data.id }} to another</a></li> -->
+            {% ifequal form.data.is_shareholder 1 %}
+            <li><b><i><a href="/admin/manager/shareholders/{{ form.data.id }}/">Show shareholder data for {{ form.data.id }}</a></i></b></li>
+            {% endifequal %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+
+

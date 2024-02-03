@@ -1,0 +1,323 @@
+{% load i18n static %}
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+<!-- <form method='post'>
+    {% csrf_token %}
+    {{form.as_p}}
+    <input type="submit" value = "submit">
+</form> -->
+
+<!-- '<div style="display: flex; align-items: center;" >' -->
+
+<form method='post'>
+    {% csrf_token %}
+    <div class="form-card">
+       
+        {% for field in form %}
+       
+        <div id='{{ field.id_for_label }}_div' style="margin-bottom: 40px;">
+            
+            <label id="{{ field.id_for_label }}_label_id" for="{{ field.id_for_label }}_label" style="font-weight: bold; font-family: Trebuchet MS, sans-serif;margin-right: 20px;">{{ field.label }}</label>
+            {{ field }}
+            {% if 'crontab' in field.id_for_label or 'interval' in field.id_for_label or 'clocked' in field.id_for_label or 'solar' in field.id_for_label or 'git' in field.id_for_label or 'yml' in field.id_for_label %}
+            <span id="{{ field.id_for_label }}_div_Add" class="material-symbols-outlined add"
+                style="margin-left: 10px;">shadow_add</span>
+            <span id="{{ field.id_for_label }}_div_Edit" class="material-symbols-outlined edit">edit</span>
+            {% endif %}
+
+            {% if 'id_args' in field.id_for_label %}
+            <div style="font-weight: bold; font-family: Trebuchet MS, sans-serif;margin-bottom: 10px; ">Add Commands:
+            </div>
+            <div id="text-box-container">
+            </div>
+            <span id="add-button" class="material-symbols-outlined add_box" style="margin-bottom: 10px; margin-top: 10px;">add_box</Span>
+            {% endif %}
+
+            {% if 'id_task' in field.id_for_label %}
+            <div>
+                <div style="font-weight: bold; font-family: Trebuchet MS, sans-serif;margin-bottom: 10px; ">Select Task
+                    Type:</div>
+                <input type="radio" id="prod_radio" name="task_type" value="dbt_runner_task">
+                <label for="prod_radio" style="font-family: Trebuchet MS, sans-serif;">Dbt Runner</label><br>
+                <input type="radio" id="dev_radio" name="task_type" value="python_runner_task">
+                <label for="dev_radio" style="font-family: Trebuchet MS, sans-serif;">Python Runner</label><br>
+
+            </div>
+            {% endif %}
+            <p id="{{ field.id_for_label }}_p" style=" font-size: 12px; font-family: Trebuchet MS, sans-serif;">{{ field.help_text }}</p>
+
+        </div>
+
+        {% endfor %}
+        <input type="submit" class="button" value="submit">
+    </div>
+
+</form>
+
+
+<script>
+    $(document).ready(function () {
+
+        $('#id_args_label_id').hide()
+        $('#id_task_label_id').hide()
+        $('#id_kwargs_label_id').hide()
+        $('#id_task').hide()
+        $('#id_args').hide()
+        $('#id_kwargs').hide()
+        $('#id_args_p').hide()
+        $('#id_kwargs_p').hide()
+        $('#id_kwargs_p').hide()
+        $('#id_task_p').hide()
+
+
+
+        $('input[type="radio"][name="task_type"]').change(function () {
+            var chosen_value = $(this).val();
+            $('#id_task').val(chosen_value);
+            console.log(chosen_value)
+        })
+
+        $('#add-button').on('click', function () {
+
+            var textBox = $('<input>').attr({
+                type: 'text',
+                id: 'text-box-' + $('.text-box').length,
+                placeholder: 'Enter text'
+            }).addClass('text-box').css({
+                'margin-top': '10px',
+                'margin-bottom': '10px'
+            });
+
+
+            var deleteButton = $('<button>').text('Delete').addClass('delete-button');
+            var container = $('<div>').addClass('text-box-container');
+            container.append(textBox, deleteButton);
+            $('#text-box-container').append(container);
+        });
+
+        $(document).on('click', '.delete-button', function () {
+            $(this).closest('.text-box-container').remove();
+        });
+
+        $(document).on('input', '.text-box', function () {
+            var textBoxValues = [];
+
+            $('.text-box').each(function () {
+                var value = $(this).val();
+                textBoxValues.push(value);
+            });
+            var argsString = JSON.stringify(textBoxValues);
+            $('#id_args').val(argsString);
+
+            console.log('Text Box Values:', textBoxValues);
+        });
+
+        function clickevent(containerId, modelName) {
+            if (["id_git_repo_div", "id_profile_yml_div"].includes(containerId)) {
+                var celery_or_analyitcs = 'analytics';
+            } else {
+                var celery_or_analyitcs = 'django_celery_beat';
+            }
+
+            $('#' + containerId + '_Add').on('click', function () {
+                window.open('/admin/' + celery_or_analyitcs + '/' + modelName + '/add/?_to_field=id&_popup=1', '_blank', 'width=600,height=400');
+            });
+
+            $('#' + containerId + '_Edit').on('click', function () {
+                console.log(containerId, modelName)
+                var selectedOptionValue = $('#' + containerId.replace("_div", "")).val();
+
+                if (selectedOptionValue) {
+                    var url = '/admin/' + celery_or_analyitcs + '/' + modelName + '/' + selectedOptionValue + '/change/?_to_field=id&_popup=1';
+                    window.open(url, '_blank', 'width=600,height=400');
+                } else {
+                    alert('Please select an option from the dropdown.' + url);
+                }
+            });
+        }
+
+        clickevent('id_clocked_div', 'clockedschedule');
+        clickevent('id_solar_div', 'solarschedule');
+        clickevent('id_crontab_div', 'crontabschedule');
+        clickevent('id_interval_div', 'intervalschedule');
+        clickevent('id_git_repo_div', 'gitrepo');
+        clickevent('id_profile_yml_div', 'profileyaml');
+
+        // $('textarea[id="id_description"]').attr('rows', 1);
+        $('#id_description').attr('rows', 1);
+        $('#id_args').attr('rows', 1);
+        $('#id_kwargs').attr('rows', 1);
+        $('#id_headers').attr('rows', 1);
+
+    });
+
+</script>
+
+
+<style>
+    .form-wrapper {
+        border: 1px solid #ccc;
+        padding: 20px;
+
+    }
+
+    .form-card {
+        border: 5px solid #ddd;
+        border-radius: 5px;
+        padding: 55px;
+        background-color: rgb(18, 21, 23);
+        color: white;
+    }
+
+    .form-rounded {
+        border: 1px solid #ccc;
+        border-radius: 10px;
+        padding: 20px;
+    }
+
+    .form-shadow {
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+    }
+
+    .form-gradient {
+        background: linear-gradient(to bottom right, #121111, #403d3b);
+        border-radius: 20px;
+        padding: 20px;
+        /* border: 20px solid #ccc; */
+        color: #fff;
+    }
+
+    .button {
+        background-color: rgb(55, 128, 55);
+        border: none;
+        color: white;
+        padding: 8px 24px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-family: Trebuchet MS, sans-serif;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 8px;
+    }
+
+
+    .button {
+        transition-duration: 0.4s;
+    }
+
+    .button:hover {
+        background-color: #04AA6D;
+        /* Green */
+        color: white;
+        box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+    }
+
+    /* body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Roboto', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+} */
+
+    .select {
+        position: relative;
+        min-width: 200px;
+    }
+
+    .select svg {
+        position: absolute;
+        right: 12px;
+        top: calc(50% - 3px);
+        width: 10px;
+        height: 6px;
+        stroke-width: 2px;
+        stroke: #9098A9;
+        fill: none;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        pointer-events: none;
+    }
+
+    .select select {
+        -webkit-appearance: none;
+        padding: 7px 40px 7px 12px;
+        width: 100%;
+        border: 1px solid #E8EAED;
+        border-radius: 5px;
+        background: white;
+        box-shadow: 0 1px 3px -2px #9098A9;
+        cursor: pointer;
+        font-family: inherit;
+        font-size: 16px;
+        transition: all 150ms ease;
+    }
+
+    .select select:required:invalid {
+        color: #5A667F;
+    }
+
+    .select select option {
+        color: #223254;
+    }
+
+    .select select option[value=""][disabled] {
+        display: none;
+    }
+
+    .select select:focus {
+        outline: none;
+        border-color: #0077FF;
+        box-shadow: 0 0 0 2px rgba(0, 119, 255, .2);
+    }
+
+    .select select:hover+svg {
+        stroke: #0077FF;
+    }
+
+    .sprites {
+        position: absolute;
+        width: 0;
+        height: 0;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .material-symbols-outlined {
+        font-size: 25px;
+        cursor: pointer;
+        font-variation-settings:
+            'FILL' 1,
+            'wght' 400,
+            'GRAD' 20,
+            'opsz' 54;
+    }
+
+
+    .add_box {
+        font-size: 25px;
+        cursor: pointer;
+        font-variation-settings:
+            'FILL' 1,
+            'wght' 400,
+            'GRAD' 20,
+            'opsz' 54;
+    }
+
+    .add {
+        color: #8bff93;
+    }
+
+    .edit {
+        color: #fea63a;
+    }
+</style>

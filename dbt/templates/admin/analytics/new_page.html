@@ -1,0 +1,551 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" rel="stylesheet">
+
+    <title>New Page</title>
+
+</head>
+
+<body>
+
+    <!-- <h1 style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: 40px;">Run #<span
+            id="jobID"></span> </h1> -->
+    <div class="form-card">
+        <div id="parent-header" style="margin-bottom:50px; display: flex; align-items: center;"></div>
+        <div id="parent-container" style="margin-bottom:50px"></div>
+        <!-- <div id="parent-loader-container" style="margin-bottom:50px"></div> -->
+        <!-- <button id="rerun">Re Run Task</button> -->
+        <div id="commandsContainer"></div>
+
+
+        <div id="logs_data" style="display: none;">{{ logs_data | safe }}</div>
+        <div id="jobs_data" style="display: none;">{{ jobs_data | safe }}</div>
+        <div id="next_id" style="display: none;">{{ next_id }}</div>
+        <div id="auth_token" style="display: none;">{{ auth_token }}</div>
+        <div style="color:#000000"></div>
+
+
+        <script>
+
+            $(document).ready(function () {
+
+                // Hide all accordion content initially
+                $('#parent-loader-container').hide()
+                $('.accordion-content').hide();
+                $('.parent-accordion-content').hide();
+
+                function convertTerminalOutput(stdout) {
+                    // Replace escape sequences with HTML equivalents
+                    var html = stdout.replace(/\u001b\[0m/g, '</span>') // Reset formatting
+                        .replace(/\u001b\[1m/g, '<span style="font-weight: bold;">') // Bold text
+                        .replace(/\u001b\[31m/g, '<span style="font-weight: bold; color: rgb(255, 0, 0) ;">') // Red text
+                        .replace(/\u001b\[32m/g, '<span style="font-weight: bold; color: rgb(18, 238, 18) ;">') // Green text
+                        .replace(/\u001b\[33m/g, '<span style="font-weight: bold; color: #fb6d00 ;">') // Green text
+                        .replace(/\u001b\[34m/g, '<span style="color: blue;">'); // Blue text
+
+                    return html;
+                }
+
+                // Function to format AM/PM
+                function formatAMPM(date) {
+                    var hours = date.getHours();
+                    var minutes = date.getMinutes();
+                    var ampm = hours >= 12 ? 'PM' : 'AM';
+                    hours = hours % 12;
+                    hours = hours ? hours : 12; // the hour '0' should be '12'
+                    minutes = minutes < 10 ? '0' + minutes : minutes;
+                    var strTime = hours + ':' + minutes;
+                    return strTime + ' ' + ampm;
+                }
+
+                var jobs_data_string = $('#jobs_data').text();
+                var jobs_datatable = JSON.parse(jobs_data_string);
+
+                var logs_data_string = $('#logs_data').text();
+                var logs_datatable = JSON.parse(logs_data_string);
+
+                console.log(logs_datatable)
+                console.log(jobs_datatable)
+                console.log($('#auth_token').text())
+
+                // Extract job ID and commands HTML from URL query parameters
+                var urlParams = new URLSearchParams(window.location.search);
+                var targetJobId = urlParams.get('job_id');
+
+                // for (var i = 0; i < jobs_datatable.length; i++) {
+                //     if (jobs_datatable[i].job_id == targetJobId) {
+                //         var row = jobs_datatable[i];
+                //         // console.log("Found row:", row);
+                //         break;
+                //     }
+                // }
+
+                row = jobs_datatable[0]
+                // console.log(row.task_id)
+                var parent_header = ''
+                
+
+                // Define parent header
+                parent_header += '<span style="font-weight: bold; font-family: Trebuchet MS, sans-serif; color: #000000; font-size: 40px; margin-left: 40px;">Run #' + row.job_id + '</span> ';
+
+                // Determine icon based on status
+                var iconClass = '';
+                if (row) {
+                    if (row.status == 'initiated') {
+                        iconClass = 'progress_activity-icon';
+                    } else if (row.success === true && row.status != 'initiated') {
+                        iconClass = 'verified-icon';
+                    } else if (row.success === false && row.status != 'initiated') {
+                        iconClass = 'dangerous-icon';
+                    } else {
+                        iconClass = 'upcoming-icon';
+                    }
+                }
+
+                // Add icon to parent header
+                parent_header += '<span class="material-symbols-outlined '
+                parent_header += iconClass
+                parent_header += '" style="font-size: 40px; margin-right: 10px; margin-left: 40px;">'+iconClass.replace("-icon", "")+ '</span>';
+                // Add status text to parent header
+                var statusText = '';
+                if (row.status == 'initiated') {
+                    statusText = 'Running';
+                } else if (row.status == 'completed') {
+                    statusText = 'Completed';
+                } else {
+                    statusText = 'Failed';
+                }
+                parent_header += '<span style="font-weight: bold; font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); font-size: 20px;">' 
+                parent_header += statusText + '</span>'
+                parent_header += '<button id="rerun" class="button" style="display: flex; align-items: center;margin-left: auto; margin-right: 10%;">'
+                parent_header += '<span id="rerun_logo" class="material-symbols-outlined rotate_right-icon" style="font-size: 30px; margin-right: 10px;">rotate_right</span>  Re-Run Task</button>';
+
+
+
+
+                var initer = false
+                var parent_command = '';
+                parent_command += '<a style="display: flex; align-items: center;margin-left: auto; " >'
+                // parent_command += row.success ? '<span class="material-symbols-outlined verified-icon" style="margin-right: 10px;">verified</span>' : '<span class="material-symbols-outlined dangerous-icon" style="margin-right: 10px;">dangerous</span>';
+                parent_command += '<span style="font-weight: bold; font-family: Trebuchet MS, sans-serif; margin-left: 40px;"> Task: ' + row.periodic_task + '</span>';
+                // parent_command += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: 40px;">Run #' + row.job_id + '</span>';
+                parent_command += '<span class="material-symbols-outlined database" style="margin-left: 20px; color: rgb(95, 92, 92);">database</span>'
+                parent_command += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: 10px;">Environment: ' + row.profile_yml + '</span>';
+                parent_command += '<span class="material-symbols-outlined database" style="margin-left: 20px; color: rgb(95, 92, 92); transform: rotate(-90deg);">arrow_split</span>'
+                parent_command += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: 10px;"> Git Repo: ' + row.repository + '</span>';
+                parent_command += '</a>'
+
+
+                // console.log(row.success)
+                console.log(row.commands)
+
+                // var commands = JSON.parse(row.commands.replace(/'/g, '"'));
+                // var nig= row.commands.replace(/\(/g, '[').replace(/\)/g, ']')
+                var commands = row.commands
+                commands = commands.match(/'[^']+'/g).map(str => str.slice(1, -1));
+                console.log(commands)
+                // var commands = JSON.parse(commands);
+                var commandsHtml = '';
+                console.log(commands)
+                commands.forEach(function (command) {
+                    var dbtStdout = ''; // Initialize dbt_stdout content
+                    // Find matching logs_data entry
+                    console.log(targetJobId, command)
+                    var matchingLog = logs_datatable.find(function (log) {
+                        console.log(log.job_id, targetJobId, log.command, command)
+                        return log.job_id == targetJobId && log.command == command;
+                    });
+
+                    console.log(matchingLog)
+
+                    if (matchingLog) {
+                        $('#parent-loader-container').hide()
+                        console.log("im in")
+                        dbtStdout = matchingLog.dbt_stdout;
+                        var isInitiated = matchingLog.status == 'initiated';
+                        initer = isInitiated
+
+                        var createdAt = new Date(matchingLog.created_at);
+                        var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                        var formattedDate = "Triggered " + months[createdAt.getMonth()] + " " + createdAt.getDate() + ", " + createdAt.getFullYear() + ", " + formatAMPM(createdAt) + " GMT+5:30";
+                        console.log(formattedDate); // Output: Triggered Jan 27, 2024, 10:07 AM GMT+5:30                 
+                        var createdTime = new Date(matchingLog.created_at);
+                        var completedTime = new Date(matchingLog.completed_at);
+                        var differenceInMillis = completedTime.getTime() - createdTime.getTime();
+                        var differenceInSeconds = Math.floor(differenceInMillis / 1000);
+                    }
+
+                    else{
+                        // $('#parent-loader-container').show()
+                        // console.log('else in here')
+                        // var loader=''
+                        // loader += '<span class="material-symbols-outlined progress_activity-icon" style="margin-right: 10px;">progress_activity</span>'
+                        // loader += '<span  style="margin-left: 10px;">Reload the page !, to see updates </span>'
+                        // $('#parent-loader-container').append(loader)
+                    }
+                    // console.log(matchingLog)
+
+                    commandsHtml += '<a class="accordion-trigger" style="display: flex; align-items: center;">';
+
+                    if (matchingLog && matchingLog.status == 'initiated') {
+                        console.log(matchingLog.status)
+                        console.log('buddy')
+                        commandsHtml += '<span class="material-symbols-outlined progress_activity-icon" style="margin-right: 10px;">progress_activity</span>';
+                    } else if (matchingLog && matchingLog.success === true && matchingLog.status != 'initiated') {
+                        console.log('buddy2')
+                        commandsHtml += '<span class="material-symbols-outlined verified-icon" style="margin-right: 10px;">verified</span>';
+                    } else if (matchingLog && matchingLog.success === false && matchingLog.status != 'initiated') {
+                        console.log('buddy3')
+                        commandsHtml += '<span class="material-symbols-outlined dangerous-icon" style="margin-right: 10px;">dangerous</span>';
+                    } else {
+                        console.log('buddy3')
+                        commandsHtml += '<span class="material-symbols-outlined upcoming-icon" style="margin-right: 10px;">upcoming</span>';
+                    }
+
+
+                    // commandsHtml += matchingLog && matchingLog.success && matchingLog.status != 'initiated' ? '<span class="material-symbols-outlined verified-icon" style="margin-right: 10px;">verified</span>' : '<span class="material-symbols-outlined dangerous-icon" style="margin-right: 10px;">dangerous</span>';
+                    commandsHtml += '<span style="font-weight: bold; font-family: Trebuchet MS, sans-serif; margin-right: 10px;">Invoke</span>';
+                    commandsHtml += '<span class="rounded-md " style=" margin-left: 20px;">'+command+'</span>';
+                    commandsHtml += '<div style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: auto;">' + formattedDate + '</div>';
+                    commandsHtml += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: auto;">' + 'Took  ' + differenceInSeconds + '  s' + '</span>';
+                    commandsHtml += '<span class="material-symbols-outlined chevron_right" style="margin-left: auto;">keyboard_double_arrow_right</span>'
+                    commandsHtml += '</a>';
+                    // commandsHtml += '<pre class="accordion-content">' + convertTerminalOutput(dbtStdout) + '</pre>'; // Change div to pre
+                    commandsHtml += '<pre id ="contentToReload_' + command + '" class="accordion-content" style="display: ' + (isInitiated ? 'block' : 'none') + '">' + convertTerminalOutput(dbtStdout) + '</pre>';
+                    // commandsHtml += '<pre id ="contentToReload_'+command+'" class="accordion-content" style="display:block + ">' + convertTerminalOutput(dbtStdout) + '</pre>';
+                    // setInterval(reloadDivContent("contentToReload_"+command), 1000);
+                });
+
+                // document.getElementById('jobID').textContent = targetJobId; // Display job ID
+                document.getElementById('parent-header').innerHTML = parent_header; // Display commands HTML
+                document.getElementById('parent-container').innerHTML = parent_command; // Display commands HTML
+                document.getElementById('commandsContainer').innerHTML = commandsHtml; // Display commands HTML
+
+                //         if (initer) {
+                //     var refreshInterval = setInterval(function () {
+                //         setTimeout(function () {
+                //             window.location.reload();
+                //         }, 1000); // Delay of 1 second before refreshing
+                //     }, 1500);
+                // }
+
+                console.log(initer)
+                if (initer) {
+                    setInterval(function () {
+                        window.location.reload()
+                    }, 1000);
+                }
+
+                // Initialize jQuery UI accordion
+                $('.accordion-trigger').click(function () {
+                    $('#parent-loader-container').empty();
+                    var accordionContent = $(this).next('.accordion-content');
+                    var chevron = $(this).find('.material-symbols-outlined.chevron_right');
+                    var isContentVisible = accordionContent.is(':visible');
+
+                    // Toggle the rotation classes based on the visibility state of the accordion content
+                    chevron.toggleClass('rotate-90cw', !isContentVisible);
+                    chevron.toggleClass('rotate-90ccw', isContentVisible);
+
+                    // Slide toggle the accordion content without animation
+                    accordionContent.stop().slideToggle(500);
+                });
+
+                var next_id = $('#next_id').text();
+                console.log(next_id)
+
+                $.ajax({
+                    url: 'admin/analytics/periodictask/',
+                    method: 'GET',
+                    success: function (response) {
+                        var tempDiv = $('<div>');
+                        tempDiv.html(response);
+                        var csrfTokenInput = tempDiv.find('input[name="csrfmiddlewaretoken"]');
+                        if (csrfTokenInput.length > 0) {
+                            var csrfToken = csrfTokenInput.val();
+                            console.log("CSRF Token:", csrfToken);
+                        } else {
+                            console.log("CSRF token input field not found in the response.");
+                        }
+
+                        $('#rerun').click(function () {
+
+                            $('#rerun_logo').text('progress_activity').removeClass('rotate_right-icon').addClass('progress_activity-icon');
+
+                            var endpoint = 'api/run-dbt-task';
+                            var headers = {
+                                'accept': 'application/json',
+                                'Authorization': 'Token ' + $('#auth_token').text(),
+                                'Content-Type': 'application/json',
+                                'X-CSRFTOKEN': csrfToken
+                            };
+                            var data = { 'task_id': row.task_id };
+
+                            $.ajax({
+                                url: 'api/run-dbt-task',
+                                method: 'POST',
+                                // async: true, // Make the request synchronous
+                                headers: headers,
+                                data: JSON.stringify(data),
+                                contentType: 'application/json',
+                                success: function (response) {
+                                    console.log(response)
+                                    // Handle successful response
+                                    var url = 'new_page';
+                                    url += '?job_id=' + encodeURIComponent(next_id);
+                                    
+                                    setTimeout(function () {
+                                        // window.open(url)
+                                        window.location.href = url;
+                                    }, 2000);
+                                },
+                                error: function (xhr, status, error) {
+                                    // Handle errors
+                                    console.error('Error:', error);
+                                    alert('Failed to execute DBT Task');
+                                }
+                            });
+                            // fetch(endpoint, {
+                            //     method: 'POST',
+                            //     headers: headers,
+                            //     body: JSON.stringify(data)
+                            // })
+                            //     .then(response => {
+                            //         if (response.ok) {
+                            //             // alert('DBT Task has been executed successfully!');
+                            //             var url = 'new_page';
+                            //             url += '?job_id=' + encodeURIComponent(next_id); // Add job_id parameter
+                            //             // Redirect to the new page
+                            //             setTimeout(function () {
+                            //                 window.location.href = url;
+                            //             }, 2000);
+                            //         } else {
+                            //             alert('Failed to execute DBT Task');
+                            //         }
+                            //     })
+                            //     .catch(error => {
+                            //         console.error('Error:', error);
+                            //     });
+                        });
+                    },
+                    error: function (xhr, status, error) {
+                        console.log("Error:", error);
+                    }
+                });
+            })
+
+        </script>
+    </div>
+
+    <style>
+        .form-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 55px;
+            background-color: rgb(255, 255, 255);
+            /* color: white; */
+        }
+
+
+        /* Accordion trigger styles */
+        .accordion-trigger {
+            display: block;
+            cursor: pointer;
+            /* font-weight: bold; */
+            margin-bottom: 5px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            /* border: 1px solid #ccc; */
+            /* border-radius: 5px; */
+            color: #333;
+            text-align: center;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .accordion-trigger:hover {
+            background-color: #039c83;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .parent-accordion-trigger {
+            display: block;
+            cursor: pointer;
+            /* font-weight: bold; */
+            margin-bottom: 5px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            /* border: 1px solid #ccc; */
+            /* border-radius: 5px; */
+            color: #333;
+            text-align: center;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            font-family: Trebuchet MS, sans-serif;
+        }
+
+        .paernt-accordion-trigger:hover {
+            background-color: #039c83;
+            color: #ffffff;
+            font-family: Trebuchet MS, sans-serif;
+        }
+
+        /* Accordion content styles */
+        .accordion-content {
+            display: none;
+            /* Initially hide content */
+            padding: 10px;
+            background-color: #000;
+            /* Set background color to black */
+            color: #fff;
+            /* Set text color to white */
+            font-family: 'Courier New', Courier, monospace;
+            /* Use monospace font */
+
+
+            border: 1px solid #ccc;
+            /* Add border for better visibility */
+        }
+
+
+        .verified-icon {
+            font-variation-settings:
+                'FILL' 1,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24;
+            color: rgb(55, 128, 55);
+        }
+
+        .dangerous-icon {
+            font-variation-settings:
+                'FILL' 1,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24;
+            color: rgb(245, 29, 0);
+        }
+
+        .upcoming-icon {
+            font-variation-settings:
+                'FILL' 1,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24;
+            color: rgb(144, 71, 20);    
+        }
+
+        /* .rounded-md {
+    border-radius: 0.375rem;
+    background-color: rgb(237, 235, 235)
+}         */
+
+        .rotate_right-icon {
+            font-variation-settings:
+                'FILL' 1,
+                'wght' 400,
+                'GRAD' 0,
+                'opsz' 24;
+            color: rgb(255, 255, 255);
+        }
+
+
+        .progress_activity-icon {
+            font-variation-settings:
+                'FILL' 1,
+                'wght' 600,
+                'GRAD' 0,
+                'opsz' 24;
+            color: rgb(2, 144, 239);
+            /* Add animation properties */
+            animation-name: rotate;
+            /* Name of the keyframes */
+            animation-duration: 1s;
+            /* Duration of the animation */
+            animation-iteration-count: infinite;
+            /* Infinite rotation */
+            animation-timing-function: linear;
+            /* Linear timing */
+        }
+
+        /* Define keyframes for rotation */
+        @keyframes rotate {
+            from {
+                transform: rotate(0deg);
+                /* Starting rotation angle */
+            }
+
+            to {
+                transform: rotate(360deg);
+                /* Ending rotation angle */
+            }
+        }
+
+        /* .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 1,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24;
+          color: rgb(245, 29, 0);
+        } */
+
+        .rotate-90cw {
+            transform: rotate(90deg);
+            transition: transform 0.3s ease;
+        }
+
+        .rotate-90ccw {
+            transform: rotate(0deg);
+            transition: transform 0.3s ease;
+        }
+
+        .button {
+        background-color: rgb(55, 128, 55);
+        border: none;
+        color: white;
+        padding: 8px 24px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-family: Trebuchet MS, sans-serif;
+        font-size: 16px;
+        margin: 4px 2px;
+        cursor: pointer;
+        border-radius: 8px;
+    }
+
+
+    .button {
+        transition-duration: 0.4s;
+    }
+
+    .button:hover {
+        background-color: #04AA6D;
+        /* Green */
+        color: white;
+        box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+    }
+
+
+        .title {
+            font-weight: bold;
+            font-family: Trebuchet MS, sans-serif;
+            font-size: 80px;
+
+        }
+    </style>
+
+
+
+</body>
+
+</html>

@@ -1,0 +1,380 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <!-- <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script> -->
+    <script src="{% static 'js/jquery.dataTables.min.js' %}"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://unpkg.com/feather-icons"></script>   
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    
+
+    <link href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" rel="stylesheet">
+    
+
+</head>
+<body>
+    <a href="/home" style="font-family: Trebuchet MS, sans-serif; margin-left:1%; "><span class="material-symbols-outlined header_icons" data-name="Home" style=" margin-bottom: 20px; font-size:50px;  color:#000000;">home</span></a>    
+<div class="title" style="display: flex; align-items: center;margin-bottom: 20px;font-size: 40px; margin-left:1%;"> <span class="material-symbols-outlined" style="font-size: 50px;  margin-right:20px ;">work_history</span> Dbt Jobs</div>
+
+<table id="resultSet" class="dataTable"></table>
+    <thead>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+<span style="color: rgb(95, 92, 92);"></span>
+
+<div id="jobs_data" style="display: none;">{{ jobs_data | safe }}</div>
+<!-- <div id="logs_data" style="display: none;">{{ logs_data | safe }}</div> -->
+
+<script>
+$(document).ready(function () {
+    // feather.replace();
+    
+    var jobs_data_string = $('#jobs_data').text();
+    var jobs_datatable = JSON.parse(jobs_data_string);
+
+    // var logs_data_string = $('#logs_data').text();
+    // var logs_datatable = JSON.parse(logs_data_string);
+    // console.log(logs_datatable)
+
+
+    function convertTerminalOutput(stdout) {
+        // Replace escape sequences with HTML equivalents
+        var html = stdout.replace(/\u001b\[0m/g, '</span>') // Reset formatting
+            .replace(/\u001b\[1m/g, '<span style="font-weight: bold;">') // Bold text
+            .replace(/\u001b\[31m/g, '<span style="font-weight: bold; color: rgb(255, 0, 0) ;">') // Red text
+            .replace(/\u001b\[32m/g, '<span style="font-weight: bold; color: rgb(18, 238, 18) ;">') // Green text
+            .replace(/\u001b\[34m/g, '<span style="color: blue;">'); // Blue text
+
+        return html;
+    }
+
+    // Function to format AM/PM
+    function formatAMPM(date) {
+        var hours = date.getHours();
+        var minutes = date.getMinutes();
+        var ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; // the hour '0' should be '12'
+        minutes = minutes < 10 ? '0' + minutes : minutes;
+        var strTime = hours + ':' + minutes;
+        return strTime + ' ' + ampm;
+    }
+    var  col_dict ={ "commands": "Commands", "job_id": "JOB ID" }
+    // Initialize DataTables
+    $('#resultSet').DataTable({
+        data: jobs_datatable,
+        columns: Object.keys(jobs_datatable[0]).map(function (key) {
+            return { 
+                data: key,
+                title: col_dict[key],
+                render: function (data, type, row) {
+
+                    var createdAt = new Date(row.created_at);
+                    var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    var formattedDate = "Triggered " + months[createdAt.getMonth()] + " " + createdAt.getDate() + ", " + createdAt.getFullYear() + ", " + formatAMPM(createdAt) + " GMT+5:30";
+                    // console.log(formattedDate); // Output: Triggered Jan 27, 2024, 10:07 AM GMT+5:30                 
+                    var createdTime = new Date(row.created_at);
+                    var completedTime = new Date(row.completed_at);
+                    var differenceInMillis = completedTime.getTime() - createdTime.getTime();
+                    var differenceInSeconds = Math.floor(differenceInMillis / 1000);
+
+                    // Assuming 'commands' is the column that needs to be hyperlinked
+                    if (key === 'commands') {
+                        // console.log(row.success)
+                        // var commands = JSON.parse(data.replace(/'/g, '"'));
+                        var commandsHtml = '';
+                        var parent_command='';
+
+                        parent_command+='<div class="parent-accordion">'
+                            parent_command += '<a class="parent-accordion-trigger" data-task="' + row.periodic_task + '" data-job-id="' + row.job_id + '" style="display: flex; align-items: center;">';    
+                        // parent_command += '<a class="parent-accordion-trigger" style="display: flex; align-items: center;">';
+                        parent_command += row.success ? '<span class="material-symbols-outlined verified-icon" style="margin-right: 10px;">verified</span>' : '<span class="material-symbols-outlined dangerous-icon" style="margin-right: 10px;">dangerous</span>';
+                        parent_command += '<span style="font-weight: bold; font-family: Trebuchet MS, sans-serif; margin-left: 0px;">' + row.periodic_task + '</span>';
+                        parent_command += '<div style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: 40px;">Run #' + row.job_id + '</div>';
+                        parent_command += '<span class="material-symbols-outlined database" style="margin-left: 20px; color: rgb(95, 92, 92);">database</span>'
+                        parent_command += '<div style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: 10px;">' + row.profile_yml + '</div>';
+                        parent_command += '<span class="material-symbols-outlined database" style="margin-left: 20px; color: rgb(95, 92, 92); transform: rotate(-90deg);">arrow_split</span>'
+                        parent_command += '<div style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: 10px;">' + row.repository + '</div>';                        
+                        parent_command += '<div style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: auto;">' + formattedDate +'</div>';                        
+                        parent_command += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92); margin-left: auto;">' + 'Took  '+differenceInSeconds+ '  s'+'</span>';                        
+                        
+                        
+                        parent_command += '<span class="material-symbols-outlined chevron_right" style="margin-left: auto;">keyboard_double_arrow_right</span>';
+                        
+                        parent_command += '</a>';
+
+                        parent_command+='<div class="parent-accordion-content">'
+                        parent_command+='<div class="accordion-item">'
+                        // commands.forEach(function (command) {
+                        //     var dbtStdout = ''; // Initialize dbt_stdout content
+                        //     // Find matching logs_data entry
+                        //     var matchingLog = logs_datatable.find(function(log) {
+                        //         return log.job_id === row.job_id && log.command === command;
+                        //     });
+                        //     if (matchingLog) {
+                        //         dbtStdout = matchingLog.dbt_stdout;
+                        //     }
+                        //     // commandsHtml += '<a class="accordion-trigger" style="display: flex; align-items: center;">' + `<span class="material-symbols-outlined">verified</span>   <span style=' font-weight: bold;font-family:Trebuchet MS ,sans-serif;'>    Invoke  </span>` + command + '</a>';
+                        //     commandsHtml += '<a class="accordion-trigger" style="display: flex; align-items: center;">';
+                        //     commandsHtml += matchingLog && matchingLog.success ? '<span class="material-symbols-outlined verified-icon" style="margin-right: 10px;">verified</span>' : '<span class="material-symbols-outlined dangerous-icon" style="margin-right: 10px;">dangerous</span>';         
+                        //     commandsHtml += '<span style="font-weight: bold; font-family: Trebuchet MS, sans-serif; margin-right: 10px;">Invoke</span>';
+                        //     commandsHtml += command;
+                        //     commandsHtml += '<span class="material-symbols-outlined chevron_right" style="margin-left: auto;">keyboard_double_arrow_right</span>'
+                        //     commandsHtml += '</a>';                            
+                        //     commandsHtml += '<pre class="accordion-content">' + convertTerminalOutput(dbtStdout) + '</pre>'; // Change div to pre
+                        
+                        //     // localStorage.setItem('commandsHtml', commandsHtml);
+                        // });
+                        // return commandsHtml;
+                        parent_command+= commandsHtml +'</div></div></div>'
+                        return parent_command;
+                    }
+                    
+                    return data;
+                }
+            };
+        }),
+        columnDefs: [
+            // {
+            //     targets: [1], // Index of the column (zero-based)
+            //     width: '1000px' // Set width to 200 pixels
+            // },
+            {
+                targets: [0,3,8,10,11,6,7,9,4,5], // Index of the column (zero-based)
+                visible: false
+            }
+
+        ]
+        ,order: [[0, 'desc']],
+    });
+
+    // Click event handler for parent accordion triggers
+    // $('.parent-accordion-trigger').click(function () {
+        $(document).on('click', '.parent-accordion-trigger', function () {
+        // Get the data associated with the clicked accordion
+        var accordionData = $(this).data();
+
+        // Construct the URL with query parameters
+        var url = 'new_page'; // Replace 'new_page.html' with the URL of your new page
+        // url += '?task=' + encodeURIComponent(accordionData.task); // Add task parameter
+        // url += '&job_id=' + encodeURIComponent(accordionData.jobId); // Add job_id parameter
+        url += '?job_id=' + encodeURIComponent(accordionData.jobId); // Add job_id parameter
+        // Redirect to the new page
+        window.open(url)
+    });
+
+    // $('.parent-accordion-trigger').click(function () {
+    //     var parentAccordionContent = $(this).next('.parent-accordion-content');
+
+    //     var parent_chevron = $(this).find('.material-symbols-outlined.chevron_right');
+    //     var parent_isContentVisible = parentAccordionContent.is(':visible');
+
+    //     // Toggle the rotation classes based on the visibility state of the accordion content
+    //     parent_chevron.toggleClass('rotate-90cw', !parent_isContentVisible);
+    //     parent_chevron.toggleClass('rotate-90ccw', parent_isContentVisible);        
+        
+    //     parentAccordionContent.stop().slideToggle(500);
+    // });
+    
+    // // Initialize jQuery UI accordion
+    // $('.accordion-trigger').click(function () {
+    //     var accordionContent = $(this).next('.accordion-content');
+    //     var chevron = $(this).find('.material-symbols-outlined.chevron_right');
+    //     var isContentVisible = accordionContent.is(':visible');
+
+    //     // Toggle the rotation classes based on the visibility state of the accordion content
+    //     chevron.toggleClass('rotate-90cw', !isContentVisible);
+    //     chevron.toggleClass('rotate-90ccw', isContentVisible);
+
+    //     // Slide toggle the accordion content without animation
+    //     accordionContent.stop().slideToggle(500);
+    // });
+
+
+    // // Hide all accordion content initially
+    // $('.accordion-content').hide();
+    // $('.parent-accordion-content').hide();
+
+
+});
+
+</script>
+<style>
+
+.material-symbols-outlined {
+  font-variation-settings:
+            'FILL' 1,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24;
+        color: rgb(0, 0, 0);
+        cursor: pointer;
+      /* font-size: 50px;
+      color: #000000;
+      font-family: Trebuchet MS, sans-serif; */
+      position: relative;
+      display: inline-block;
+    }
+
+    .material-symbols-outlined::after {
+      content: attr(data-name); /* Display the value of the data-name attribute */
+      position: absolute;
+      bottom: -20px; /* Adjust this value to place the text appropriately */
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px; /* Adjust font size to reduce size */
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .material-symbols-outlined:hover::after {
+      opacity: 1;
+    }
+
+
+
+
+.dataTables_wrapper table.dataTable tbody td {
+    /* Apply custom font family */
+    font-family: Trebuchet MS, sans-serif;   
+    /* margin-bottom: 5px;
+    padding: 10px; */
+    /* background-color: #f0f0f0;  */
+    /* Other font properties like size, weight, etc. can be added here */
+}
+
+    .dataTables_paginate {
+
+    font-family: Trebuchet MS, sans-serif;    
+    }
+.dataTables_info {
+    font-family: Trebuchet MS, sans-serif;
+}
+.dataTables_filter label {
+    font-family: Trebuchet MS, sans-serif;
+}
+
+.dataTables_length  {
+    /* Apply styles to the label element */
+    /* font-weight: bold; */
+    margin-left: 1%;
+    font-family: Trebuchet MS, sans-serif;
+    /* Add more styles as needed */
+}
+    .dataTables_wrapper table.dataTable thead th {
+    /* Apply custom font family */
+    font-family: Trebuchet MS, sans-serif;
+
+    /* Other font properties like size, weight, etc. can be added here */
+}
+/* Accordion trigger styles */
+.accordion-trigger {
+    display: block;
+    cursor: pointer;
+    /* font-weight: bold; */
+    margin-bottom: 5px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    /* border: 1px solid #ccc; */
+    /* border-radius: 5px; */
+    color: #333;
+    text-align: center;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-family: 'Courier New', Courier, monospace; 
+}
+
+.accordion-trigger:hover {
+    background-color: #039c83;
+    color: #ffffff;
+    font-family: 'Courier New', Courier, monospace; 
+}
+
+.parent-accordion-trigger {
+    display: block;
+    cursor: pointer;
+    /* font-weight: bold; */
+    margin-bottom: 5px;
+    padding: 10px;
+    background-color: #f0f0f0;
+    /* border: 1px solid #ccc; */
+    /* border-radius: 5px; */
+    color: #333;
+    text-align: center;
+    transition: background-color 0.3s ease, color 0.3s ease;
+    font-family: Trebuchet MS, sans-serif; 
+}
+
+.paernt-accordion-trigger:hover {
+    background-color: #039c83;
+    color: #ffffff;
+    font-family: Trebuchet MS, sans-serif; 
+}
+
+/* Accordion content styles */
+.accordion-content {
+    display: none; /* Initially hide content */
+    padding: 10px;
+    background-color: #000; /* Set background color to black */
+    color: #fff; /* Set text color to white */
+    font-family: 'Courier New', Courier, monospace; /* Use monospace font */
+    
+    
+    border: 1px solid #ccc; /* Add border for better visibility */
+}
+
+
+.verified-icon {
+  font-variation-settings:
+  'FILL' 1,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 24;
+  color: rgb(55, 128, 55);
+}
+
+.dangerous-icon {
+  font-variation-settings:
+  'FILL' 1,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 24;
+  color: rgb(245, 29, 0);
+}
+
+/* .material-symbols-outlined {
+  font-variation-settings:
+  'FILL' 1,
+  'wght' 400,
+  'GRAD' 0,
+  'opsz' 24;
+  color: rgb(245, 29, 0);
+} */
+
+.rotate-90cw{
+    transform: rotate(90deg);
+    transition: transform 0.3s ease;
+}
+.rotate-90ccw{
+    transform: rotate(0deg);
+    transition: transform 0.3s ease;
+}
+
+.title{
+    font-weight: bold; font-family: Trebuchet MS, sans-serif; font-size : 80px;
+
+}
+</style>
+</body>
+</html>

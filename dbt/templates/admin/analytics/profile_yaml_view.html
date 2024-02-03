@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.23.0/min/vs/loader.js"></script>
+    <link rel="stylesheet"        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+
+<body>
+    
+    <div class="form-card">
+        <a href="/home" style="font-family: Trebuchet MS, sans-serif;"><span class="material-symbols-outlined header_icons" data-name="Home" style="  font-size:50px;  color:#000000;">home</span></a>
+        <div class="title" style="display: flex; align-items: center; font-weight: bold ; font-family: Trebuchet MS, sans-serif;margin-top: 20px;margin-bottom: 20px;font-size: 40px;"><span class="material-symbols-outlined" style="font-size: 50px;  margin-right:20px ;">lab_profile</span>Profile YML Editor</div>
+        <!-- <div style="margin-bottom: 20px;font-weight:bold;font-family: Trebuchet MS, sans-serif;font-size: 40px; margin-left:1% ;">Profile YML Editor</div> -->
+        <!-- <label for="environment" style="font-family: Trebuchet MS, sans-serif;">Select Environment:</label>
+        <select id="environment">
+            <option style="font-family: Trebuchet MS, sans-serif;" value="PROD">PROD</option>
+            <option style="font-family: Trebuchet MS, sans-serif;" value="DEV">DEV</option>
+        </select> -->
+    
+        <div style="font-family: Trebuchet MS, sans-serif;margin-bottom: 20px; ">Select Environment:</div>    
+        <input type="radio" id="prod_radio" name="environment" value="PROD" >
+        <label for="prod_radio" style="font-family: Trebuchet MS, sans-serif;">PROD</label><br>
+        <input type="radio" id="dev_radio" name="environment" value="DEV">
+        <label for="dev_radio" style="font-family: Trebuchet MS, sans-serif;">DEV</label><br>
+      
+        <!-- <button id="env_button" style="font-size:14px" class="button">Select Env</button> -->
+
+    <div id="editor" display="block"></div>
+    <button id="save" class="button" style="display: flex; align-items: center;margin-top: 20px; margin-right: auto; margin-right: 10%;">Update</button>
+    <div id="auth_token" style="display: none;">{{ auth_token }}</div>
+    </div>   
+    <script>
+        $(document).ready(function () {
+
+            var editor
+
+            $('input[type="radio"][name="environment"]').change(function() {
+                var chosen_env = $(this).val();
+                console.log("Selected environment:", chosen_env);
+            // });
+
+            // $('#env_button').click(
+            //     function () {
+                    var environmentDict = { "DEV": 1, "PROD": 2 };
+                    // var dropdown = document.getElementById("environment");
+                    // var chosen_env = dropdown.options[dropdown.selectedIndex].value;
+                    var chosen_env = $('input[name="environment"]:checked').val();
+                    var id = environmentDict[chosen_env]
+
+                    console.log(id)
+                    $.ajax({
+                        url: 'admin/analytics/profileyaml/',
+                        method: 'GET',
+                        success: function (response) {
+                            var tempDiv = $('<div>');
+                            tempDiv.html(response);
+                            var csrfTokenInput = tempDiv.find('input[name="csrfmiddlewaretoken"]');
+                            if (csrfTokenInput.length > 0) {
+                                var csrfToken = csrfTokenInput.val();
+                                console.log("CSRF Token:", csrfToken);
+                            } else {
+                                console.log("CSRF token input field not found in the response.");
+                            }
+
+                            var endpoint = 'api/profile_yaml/' + id + '/'
+                            var headers = {
+                                'accept': 'application/json',
+                                'Authorization': 'Token ' + $('#auth_token').text(),
+                                'Content-Type': 'application/json',
+                                'X-CSRFTOKEN': csrfToken
+                            };
+
+                            $.ajax({
+                                url: endpoint,
+                                method: 'GET',
+                                headers: headers,
+                                success: function (response) {
+                                    console.log(response)
+                                    // Handle successful response
+                                    if (editor) {
+                                        editor.dispose();
+                                    }
+                                    require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.23.0/min/vs' } });
+                                    require(['vs/editor/editor.main'], function () {
+
+                                        var code = response.profile_yml
+                                        // Initialize Monaco Editor
+                                        editor = monaco.editor.create(document.getElementById('editor'), {
+                                            value: code,
+                                            language: 'yaml',
+                                            theme: 'vs-dark' // Change the theme as needed
+                                        });
+
+
+                                        $('#save').click(function () {
+                                            var value = editor.getValue();
+
+                                            var data = { "profile_yml": value, "name": chosen_env }
+                                            $.ajax({
+                                                url: endpoint,
+                                                method: 'PUT',
+                                                // method: 'GET',
+                                                // async: true, // Make the request synchronous
+                                                headers: headers,
+                                                data: JSON.stringify(data),
+                                                contentType: 'application/json',
+                                                success: function (response) {
+                                                    console.log(response)
+                                                    alert("Congrats!  Updated YML ")
+                                                }
+                                            })
+
+                                        })
+
+                                    });
+                                }
+                            });
+
+                        }
+                    });
+
+                })
+        });
+    </script>
+
+    <style>
+
+
+.material-symbols-outlined {
+      /* font-size: 50px;
+      color: #000000;
+      font-family: Trebuchet MS, sans-serif; */
+      position: relative;
+      display: inline-block;
+    }
+
+    .material-symbols-outlined::after {
+      content: attr(data-name); /* Display the value of the data-name attribute */
+      position: absolute;
+      bottom: -20px; /* Adjust this value to place the text appropriately */
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px; /* Adjust font size to reduce size */
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .material-symbols-outlined:hover::after {
+      opacity: 1;
+    }
+
+
+        .form-card {
+                    border: 1px solid #ddd;
+                    border-radius: 5px;
+                    padding: 40px;
+
+                    background-color: rgb(255, 255, 255);
+                    /* color: white; */
+                }
+        #editor {
+            width: 600px;
+            height: 400px;
+            margin-left: 0.5%;
+            margin-top: 20px;
+            /* border: 1px solid #ddd; */
+            border-radius: 5px;
+            /* padding: 25px; */
+        }
+
+        .button {
+            background-color: rgb(55, 128, 55);
+            border: none;
+            color: white;
+            padding: 8px 24px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-family: Trebuchet MS, sans-serif;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+
+        .button {
+            transition-duration: 0.4s;
+        }
+
+        .button:hover {
+            background-color: #04AA6D;
+            /* Green */
+            color: white;
+            box-shadow: 0 12px 16px 0 rgba(0, 0, 0, 0.24), 0 17px 50px 0 rgba(0, 0, 0, 0.19);
+        }
+    </style>
+
+</body>
+
+</html>

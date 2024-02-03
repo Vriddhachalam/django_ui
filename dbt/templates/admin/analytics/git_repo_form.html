@@ -1,0 +1,98 @@
+{% load i18n static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+    <a href="/home" style="font-family: Trebuchet MS, sans-serif;"><span class="material-symbols-outlined header_icons" data-name="Home" style="  font-size:50px;  color:#000000;">home</span></a>
+    <a href="/git_repo_view" style="font-family: Trebuchet MS, sans-serif;"><span class="material-symbols-outlined header-icons" data-name="New Git Repo" style=" font-size:50px;  color:#000000;">lists</span></a>
+
+    <div class="title" style="display: flex; align-items: center; font-weight: bold ; font-family: Trebuchet MS, sans-serif;margin-bottom: 20px; margin-top: 20px; font-size: 40px;"><span class="material-symbols-outlined" style="font-size: 50px;  margin-right:10px;">post_add</span>Git Repo Form</div>
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <input type="submit" value="Submit">
+    </form>
+</body>
+
+<style>
+.material-symbols-outlined {
+      /* font-size: 50px;
+      color: #000000;
+      font-family: Trebuchet MS, sans-serif; */
+      position: relative;
+      display: inline-block;
+    }
+
+    .material-symbols-outlined::after {
+      content: attr(data-name); /* Display the value of the data-name attribute */
+      position: absolute;
+      bottom: -20px; /* Adjust this value to place the text appropriately */
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px; /* Adjust font size to reduce size */
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .material-symbols-outlined:hover::after {
+      opacity: 1;
+    }
+
+
+
+    body {
+        background-color: rgb(219, 219, 219);
+        font-family: Trebuchet MS, sans-serif;
+        color: #333;
+    }
+
+    form {
+        width: 50%;
+        margin: 50px auto;
+        padding: 20px;
+        background-color: #dad4d5; /* Light Pink */
+        border: 1px solid #131010; /* Light Red */
+        border-radius: 10px;
+    }
+
+    label {
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    input[type="submit"] {
+        background-color: #ff3333; /* Darker Light Red */
+        color: white;
+        padding: 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    input[type="submit"]:hover {
+        background-color: #ff0000; /* Light Red */
+    }
+
+    .material-symbols-outlined {
+      font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+      /* color: rgb(55, 128, 55); */
+    }
+</style>
+
+</html>

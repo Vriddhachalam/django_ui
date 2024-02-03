@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+</head>
+<body>
+
+<div id="mySidenav" class="sidenav">
+  <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+  <a href="{% url 'admin:index' %}" ><span class="material-symbols-outlined">admin_panel_settings</span>Admin</a>
+  <a href="admin/analytics"><span class="material-symbols-outlined">service_toolbox</span>Django Build Tool Models</a>
+  <a href="dbt_jobs_view"><span class="material-symbols-outlined">work_history</span>Dbt Jobs</a>
+  <a href="periodic_task_view"><span class="material-symbols-outlined">task_alt</span>Periodic Tasks</a>
+  <a href="profile_yaml_view"><span class="material-symbols-outlined">lab_profile</span>Profile Yaml</a>
+  <a href="git_repo_view"><span class="material-symbols-outlined database" style="transform: rotate(-90deg);">arrow_split</span>Git Repoository</a>
+  <!-- <a href="git_repo_form"><span class="material-symbols-outlined">lab_profile</span>Git Repoository</a> -->
+  
+  <!-- <a href="dbt_logs_form">Dbt_Logs_Form</a> -->
+  <!-- <a href="python_logs_form">Python_Logs_Form</a>
+  <a href="python_logs_view">Python_Logs_View</a> -->
+</div>
+
+<div id="main">
+  <p>DBT Administration Home </p>
+  <span style="font-size:30px;cursor:pointer" onclick="openNav()">&#9776; Analytics</span>
+</div>
+
+<script>
+function openNav() {
+  document.getElementById("mySidenav").style.width = "250px";
+  document.getElementById("main").style.marginLeft = "250px";
+}
+
+function closeNav() {
+  document.getElementById("mySidenav").style.width = "0";
+  document.getElementById("main").style.marginLeft= "0";
+}
+</script>
+
+
+
+<style>
+  body {
+    font-family: Trebuchet MS, sans-serif;   
+    background-color: #f0f0f0;  /* Light Pink */
+  }
+  
+  .sidenav {
+    height: 100%;
+    width: 0;
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    background-color: #34393a;  /* Light Blue */
+    overflow-x: hidden;
+    transition: 0.5s;
+    padding-top: 60px;
+  }
+  
+  .sidenav a {
+    padding: 8px 8px 8px 32px;
+    text-decoration: none;
+    font-size: 15px;
+    color: white;
+    /* display: block; */
+    display: flex;
+    align-items: center;
+    margin-right: 10px;
+    transition: 0.3s;
+  }
+  
+  .sidenav a:hover {
+    color: #000000;  /* Light Red */
+  }
+  
+  .sidenav .closebtn {
+    position: absolute;
+    top: 0;
+    right: 25px;
+    font-size: 36px;
+    margin-left: 50px;
+  }
+  
+  #main {
+    transition: margin-left .5s;
+    padding: 16px;
+    font-weight: bold;
+    color: #000000;  /* Dark Red */
+    background-color: #ffffcc;  /* Pale Yellow */
+  }
+  
+  @media screen and (max-height: 450px) {
+    .sidenav {padding-top: 15px;}
+    .sidenav a {font-size: 18px;}
+  }
+  
+  
+  .material-symbols-outlined {
+    font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+    margin-right: 10px;
+  }
+  
+  
+  .add {
+          color: #8bff93;
+      }
+  
+  </style>
+   
+</body>
+</html> 

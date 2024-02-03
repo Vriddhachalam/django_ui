@@ -1,0 +1,17 @@
+/* Remove borders from DataTables */
+table.dataTable {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+table.dataTable th,
+table.dataTable td {
+    border: none;
+}
+
+/* Optional: Add padding or margin if needed */
+table.dataTable th,
+table.dataTable td {
+    padding: 0;
+    margin: 0;
+}

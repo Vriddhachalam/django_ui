@@ -1,0 +1,34 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% load template-variables %}
+{% get_nav_items as nav_items %}
+
+{% load static %}
+{% block title %}{{ title }} {% endblock %}
+{% block extrastyle %}
+
+<link rel="stylesheet" type="text/css" href="{% static "css/admin-extra.css" %}" />
+
+{% endblock %}
+{% block branding %}
+<h1 id="site-name"><a href="{% url 'admin:index' %}">DBT Administration</a></h1>
+<!-- <h1 id="site-name"><a href="{% url 'admin:index' %}"><b><i>{{ site_header|default:_('DBT administration') }}</b></i></a></h1> -->
+<style>
+
+    .module h2, .module caption, .inline-group h2,#header
+    {   
+        margin: 0;
+        padding: 2px 5px 3px 5px;
+        font-size: 11px;
+        text-align: left;
+        font-weight: bold;
+        background: blue url(../img/default-bg.gif) top left repeat-x;
+        color: blue;
+    }
+    
+    </style>
+
+    
+{% endblock %}
+
+{% block nav-global %}{% endblock %}

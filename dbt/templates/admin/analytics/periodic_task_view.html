@@ -1,0 +1,561 @@
+{% load i18n static %}
+
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/darkmode-js@1.5.7/lib/darkmode-js.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script type="text/javascript" charset="utf8" src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.js"></script>
+  <!-- <script src="{% static 'js/jquery.dataTables.min.js' %}"></script> -->
+
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+  <script src="https://unpkg.com/feather-icons"></script>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  <link href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css" rel="stylesheet">
+</head>
+
+<body>
+
+
+  
+  <div id="task_list" style="display: none;">{{ data | safe }}</div>
+  <div id="auth_token" style="display: none;">{{ auth_token }}</div>
+  <div id="next_id" style="display: none;">{{ next_id }}</div>
+
+
+  <a href="/home" style="font-family: Trebuchet MS, sans-serif;"><span class="material-symbols-outlined header_icons" data-name="Home" style="  font-size:50px;  color:#000000;">home</span></a>
+  <a href="/periodic_task_form_old" style="font-family: Trebuchet MS, sans-serif;"><span class="material-symbols-outlined header-icons" data-name="New Task" style=" font-size:50px;  color:#000000;">add_task</span></a>
+
+  <div class="title" style="display: flex; align-items: center; font-weight: bold ; font-family: Trebuchet MS, sans-serif;margin-bottom: 20px; margin-top: 20px; font-size: 40px ;"><span class="material-symbols-outlined" style="font-size: 50px;  margin-right:20px ;">task_alt</span> Periodic Tasks </div>
+  <table id="resultSet" class="dataTable"></table>
+  <thead>
+  </thead>
+  <tbody>
+  </tbody>
+  </table>
+
+
+
+  <script>
+
+
+    function addDarkmodeWidget() {
+
+
+      const options = {
+    bottom: '32px', // default: '32px'
+    right: 'unset', // default: '32px'
+    left: '32px', // default: 'unset'
+    time: '0.5s', // default: '0.3s'
+    mixColor: '#fff', // default: '#fff'
+    backgroundColor: '#fff',  // default: '#fff'
+    buttonColorDark: '#100f2c',  // default: '#100f2c'
+    buttonColorLight: '#fff', // default: '#fff'
+    saveInCookies: false, // default: true,
+    label: '🌓', // default: ''
+    autoMatchOsTheme: true // default: true
+  }
+
+  const darkmode = new Darkmode(options);
+  darkmode.showWidget();
+      // new Darkmode().showW idget();
+    }
+    window.addEventListener('load', addDarkmodeWidget);
+    // Function to format AM/PM
+    function formatAMPM(date) {
+      var hours = date.getHours();
+      var minutes = date.getMinutes();
+      var ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      var strTime = hours + ':' + minutes;
+      return strTime + ' ' + ampm;
+    }
+
+    console.log($('#task_list').text())
+    var task_datatable = JSON.parse($('#task_list').text());
+    var col_dict = { "args": "Commands", "name": "Task Name", "id": "Task ID", "one_off": "One off task", "enabled": "Enabled", "start_time": "Start Time", "last_run_at": "Last Runtime", "priority": "Run", "expires": "Delete" }
+
+    $('#resultSet').DataTable({
+      data: task_datatable,
+      columns: Object.keys(task_datatable[0]).map(function (key) {
+        return {
+          data: key,
+          title: col_dict[key],
+          // title: key,
+          render: function (data, type, row) {
+
+            if (key === 'one_off') {
+              one_off_html = ""
+              one_off_html += row.one_off ? '<span class="material-symbols-outlined verified-icon" style="margin-right: 10px;">verified</span>' : '<span class="material-symbols-outlined dangerous-icon" style="margin-right: 10px;">dangerous</span>';
+              return one_off_html
+            }
+
+            if (key === 'enabled') {
+              enabled_html = ""
+              enabled_html += row.enabled ? '<span class="material-symbols-outlined verified-icon" style="margin-right: 10px;">verified</span>' : '<span class="material-symbols-outlined dangerous-icon" style="margin-right: 10px;">dangerous</span>';
+              return enabled_html
+            }
+
+            if (key === 'args') {
+              args_html = ""
+              args_html += '<div style="display: flex; align-items: center;" >'
+              args_html += '<span class="material-symbols-outlined database" style="margin-left: 10px;   color: #b1aa9f; margin-right: auto; ">terminal</span>'
+              args_html += '<span style="font-family: Trebuchet MS, sans-serif; color: #b1aa9f;  margin-right: auto;">' + row.args + '</span>';
+              args_html += '</div>'
+              return args_html
+            }
+            if (key === 'name') {
+              name_html = ""
+              name_html += '<span id ="'+row.id+'"  class="task_name">' + row.name + '</span>';
+              return name_html
+            }
+
+            if (key === 'start_time') {
+              start_time_html = ""
+              var createdAt = new Date(row.start_time);
+              var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              var formatted_start_time = "Triggered " + months[createdAt.getMonth()] + " " + createdAt.getDate() + ", " + createdAt.getFullYear() + ", " + formatAMPM(createdAt) + " GMT+5:30";
+              if (createdAt.getFullYear() != '1970') {
+                start_time_html += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92);">' + formatted_start_time + '</span>';
+              } else {
+                start_time_html += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92);">' + '-' + '</span>';
+              }
+              return start_time_html
+            }
+
+            if (key === 'last_run_at') {
+              last_run_html = ""
+              var createdAt = new Date(row.last_run_at);
+              var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              var formatted_last_run_html = "Triggered " + months[createdAt.getMonth()] + " " + createdAt.getDate() + ", " + createdAt.getFullYear() + ", " + formatAMPM(createdAt) + " GMT+5:30";
+              if (createdAt.getFullYear() != '1970') {
+                last_run_html += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92);">' + formatted_last_run_html + '</span>';
+              } else {
+                last_run_html += '<span style="font-family: Trebuchet MS, sans-serif; color: rgb(95, 92, 92);">' + '-' + '</span>';
+              }
+              return last_run_html
+            }
+
+            if (key == 'priority') {
+              run_html = ""
+              run_html += '<span id ="' + row.id + '" class="material-symbols-outlined autoplay" style="margin-left: auto;margin-right: 10px;">autoplay</span>'
+              return run_html
+            }
+            if (key == 'expires') {
+              run_html = ""
+              run_html += '<span id ="' + row.id + '" class="material-symbols-outlined delete-forever" style="margin-left: auto;margin-right: 10px;">delete_forever</span>'
+              return run_html
+            }
+
+            return data;
+          }
+        };
+      }),
+      columnDefs: [
+        // {
+        //     targets: [1], // Index of the column (zero-based)
+        //     width: '1000px' // Set width to 200 pixels
+        // },
+        {
+          targets: [2, 3, 4, 5, 6, 8, 9, 10, 11, 12, 15, 20, 21, 22, 23, 24, 25], // Index of the column (zero-based)
+          visible: false
+        }
+
+      ]
+      , order: [[0, 'desc']],
+    });
+
+
+    $.ajax({
+      url: 'admin/analytics/periodictask/',
+      method: 'GET',
+      success: function (response) {
+        var tempDiv = $('<div>');
+        tempDiv.html(response);
+        var csrfTokenInput = tempDiv.find('input[name="csrfmiddlewaretoken"]');
+        if (csrfTokenInput.length > 0) {
+          var csrfToken = csrfTokenInput.val();
+          console.log("CSRF Token:", csrfToken);
+        } else {
+          console.log("CSRF token input field not found in the response.");
+        }
+
+        $('.material-symbols-outlined').click(function () {
+          var task_id = $(this).attr('id');
+
+          if ($(this).hasClass('autoplay')) {
+            // Update icon class and value for autoplay
+            $(this).removeClass('autoplay').addClass('progress_activity-icon').text('progress_activity');
+
+            setTimeout(function () {
+              $('#' + task_id).removeClass('progress_activity-icon').addClass('autoplay').text('autoplay');
+            }, 10000);
+
+            var endpoint = 'api/run-dbt-task';
+            var headers = {
+              'accept': 'application/json',
+              'Authorization': 'Token ' + $('#auth_token').text(),
+              'Content-Type': 'application/json',
+              'X-CSRFTOKEN': csrfToken
+            };
+            var data = { 'task_id': task_id };
+
+            $(this)
+
+            $.ajax({
+              url: endpoint,
+              method: 'POST',
+              // async: true, // Make the request synchronous
+              headers: headers,
+              data: JSON.stringify(data),
+              contentType: 'application/json',
+              success: function (response) {
+                console.log(response)
+                // Handle successful response
+                // alert('task run')
+                var url = 'new_page';
+                url += '?job_id=' + encodeURIComponent($('#next_id').text());
+
+                setTimeout(function () {
+                  // window.open(url)
+                  window.location.href = url;
+                }, 2000);
+              },
+              error: function (xhr, status, error) {
+                // Handle errors
+                console.error('Error:', error);
+                alert('Failed to execute DBT Task');
+              }
+            });
+
+
+          } else if ($(this).hasClass('delete-forever')) {
+
+            var task_id = $(this).attr('id');
+            console.log(task_id)
+
+            var endpoint = '/api/periodic-task/' + task_id + '/';
+            var headers = {
+              'accept': '*/*',
+              'Authorization': 'Token ' + $('#auth_token').text(),
+              'X-CSRFTOKEN': csrfToken
+            };
+
+            $.ajax({
+              url: '/api/periodic-task/' + task_id + '/',
+              method: 'DELETE',
+              headers: headers,
+              success: function (response) {
+
+                alert('task deleted')
+                window.location.reload()
+                // Handle success response
+                console.log(response);
+              },
+              error: function (xhr, status, error) {
+                // Handle error response
+                console.error(xhr.responseText);
+              }
+            });
+
+          }
+        });
+      
+      
+        $('.task_name').click(function () {
+        
+          var task_id = $(this).attr('id');
+
+
+
+          console.log(task_id)
+
+          var endpoint = 'api/periodic-task/'+task_id+'/';
+            var headers = {
+              'accept': 'application/json',
+              'Authorization': 'Token ' + $('#auth_token').text(),
+              // 'Content-Type': 'application/json',
+              // 'X-CSRFTOKEN': csrfToken
+            };
+            // var data = { 'task_id': task_id };
+
+            $(this)
+
+            $.ajax({
+              url: endpoint,
+              method: 'GET',
+              // async: true, // Make the request synchronous
+              headers: headers,
+              // data: JSON.stringify(data),
+              contentType: 'application/json',
+              success: function (response) {
+                console.log(response)
+                // Handle successful response
+                // alert('task run')
+                // var url = 'new_page';
+                // url += '?job_id=' + encodeURIComponent($('#next_id').text());
+
+                // setTimeout(function () {
+                //   // window.open(url)
+                //   window.location.href = url;
+                // }, 2000);
+              },
+              error: function (xhr, status, error) {
+                // Handle errors
+                console.error('Error:', error);
+                alert('Failed to execute DBT Task');
+              }
+            });
+
+
+        })
+      
+      
+      
+      
+      
+      },
+      error: function (xhr, status, error) {
+        console.log("Error:", error);
+      }
+
+    });
+
+
+  </script>
+
+
+  <style>
+
+.material-symbols-outlined {
+  font-variation-settings:
+            'FILL' 1,
+            'wght' 400,
+            'GRAD' 0,
+            'opsz' 24;
+        color: rgb(0, 0, 0);
+        cursor: pointer;
+      /* font-size: 50px;
+      color: #000000;
+      font-family: Trebuchet MS, sans-serif; */
+      position: relative;
+      display: inline-block;
+    }
+
+    .material-symbols-outlined::after {
+      content: attr(data-name); /* Display the value of the data-name attribute */
+      position: absolute;
+      bottom: -20px; /* Adjust this value to place the text appropriately */
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.8);
+      color: #ffffff;
+      padding: 3px 8px;
+      border-radius: 5px;
+      font-size: 12px; /* Adjust font size to reduce size */
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .material-symbols-outlined:hover::after {
+      opacity: 1;
+    }
+
+
+    .dataTables_wrapper table.dataTable tbody td {
+      /* Apply custom font family */
+      font-family: Trebuchet MS, sans-serif;
+      /* margin-bottom: 5px;
+    padding: 10px; */
+      /* background-color: #f0f0f0;  */
+      /* Other font properties like size, weight, etc. can be added here */
+    }
+
+    .dataTables_paginate {
+
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .dataTables_info {
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .dataTables_filter label {
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .dataTables_length {
+      /* Apply styles to the label element */
+      /* font-weight: bold; */
+      margin-left: 1%;
+      font-family: Trebuchet MS, sans-serif;
+      /* Add more styles as needed */
+    }
+
+    .dataTables_wrapper table.dataTable thead th {
+      /* Apply custom font family */
+      font-family: Trebuchet MS, sans-serif;
+
+      /* Other font properties like size, weight, etc. can be added here */
+    }
+
+    /* Accordion trigger styles */
+    .accordion-trigger {
+      display: block;
+      cursor: pointer;
+      /* font-weight: bold; */
+      margin-bottom: 5px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      /* border: 1px solid #ccc; */
+      /* border-radius: 5px; */
+      color: #333;
+      text-align: center;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .accordion-trigger:hover {
+      background-color: #039c83;
+      color: #ffffff;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    .parent-accordion-trigger {
+      display: block;
+      cursor: pointer;
+      /* font-weight: bold; */
+      margin-bottom: 5px;
+      padding: 10px;
+      background-color: #f0f0f0;
+      /* border: 1px solid #ccc; */
+      /* border-radius: 5px; */
+      color: #333;
+      text-align: center;
+      transition: background-color 0.3s ease, color 0.3s ease;
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .paernt-accordion-trigger:hover {
+      background-color: #039c83;
+      color: #ffffff;
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    /* Accordion content styles */
+    .accordion-content {
+      display: none;
+      /* Initially hide content */
+      padding: 10px;
+      background-color: #000;
+      /* Set background color to black */
+      color: #fff;
+      /* Set text color to white */
+      font-family: 'Courier New', Courier, monospace;
+      /* Use monospace font */
+
+
+      border: 1px solid #ccc;
+      /* Add border for better visibility */
+    }
+
+
+    .verified-icon {
+      font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+      color: rgb(55, 128, 55);
+    }
+
+    .dangerous-icon {
+      font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+      color: rgb(245, 29, 0);
+    }
+
+    .autoplay {
+      font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+      color: rgb(93, 196, 62);
+      cursor: pointer;
+    }
+
+    .delete-forever {
+      font-variation-settings:
+        'FILL' 1,
+        'wght' 400,
+        'GRAD' 0,
+        'opsz' 24;
+      color: rgb(208, 33, 10);
+      cursor: pointer;
+    }
+
+    .progress_activity-icon {
+      font-variation-settings:
+        'FILL' 1,
+        'wght' 600,
+        'GRAD' 0,
+        'opsz' 24;
+      color: rgb(2, 144, 239);
+      /* Add animation properties */
+      animation-name: rotate;
+      /* Name of the keyframes */
+      animation-duration: 1s;
+      /* Duration of the animation */
+      animation-iteration-count: infinite;
+      /* Infinite rotation */
+      animation-timing-function: linear;
+      /* Linear timing */
+    }
+
+    /* Define keyframes for rotation */
+    @keyframes rotate {
+      from {
+        transform: rotate(0deg);
+        /* Starting rotation angle */
+      }
+
+      to {
+        transform: rotate(360deg);
+        /* Ending rotation angle */
+      }
+    }
+
+
+    .task_name  {
+      color: rgb(35, 204, 247);
+      cursor: pointer;
+      font-family: Trebuchet MS, sans-serif;
+    }
+
+    .rotate-90cw {
+      transform: rotate(90deg);
+      transition: transform 0.3s ease;
+    }
+
+    .rotate-90ccw {
+      transform: rotate(0deg);
+      transition: transform 0.3s ease;
+    }
+  </style>
+
+</body>
+
+</html>
+{% endblock %}
