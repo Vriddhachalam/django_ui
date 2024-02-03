@@ -1,0 +1,158 @@
+#!/bin/bash
+
+set -o errexit
+set -o pipefail
+set -o nounset
+
+set_database_url() {
+  echo "create database with port:5433 and username: dbtuser, and db:analytics"
+  postgres_password=$(grep 'postgres_password' /passwords/password.txt | cut -d '=' -f 2)
+
+  # Set DATABASE_URL environment variable
+  database_url="postgres://dbtuser:$postgres_password@postgres:5432/analytics"
+  export DATABASE_URL="$database_url"
+}
+
+# get_remote_user() {
+#   read -p "Enter remote_user: " remote_user
+#   export remote_user
+# }
+# echo "going to set remote_user"
+# export remote_user = "admin"
+# echo "remote_user set"
+echo "database_url export done..."
+
+echo "fetching user..."
+
+create_superuser() {
+  # Use remote_user as default
+  username="$(grep 'remote_usr' /passwords/password.txt | cut -d '=' -f 2)"  # fetching user_name from password.txt
+  email="$username@example.com"
+  password="$(grep 'remote_pwd' /passwords/password.txt | cut -d '=' -f 2)"  # You may want to set a secure default password
+  echo "username:${username}"
+  echo "password:${password}"
+  # Check if the superuser already exists
+  if python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); exists = User.objects.filter(username='$username').exists(); exit(0 if exists else 1)"; then
+    # Superuser exists, skip creation
+    echo "Superuser '$username' already exists. Skipping creation."
+  else
+    # Run Django management command to create the superuser
+    python manage.py createsuperuser --noinput --username "$username" --email "$email"
+    # Set the password for the superuser
+    echo "from django.contrib.auth import get_user_model; User = get_user_model(); user = User.objects.get(username='$username'); user.set_password('$password'); user.save()" | python manage.py shell
+    # create token for superuser
+    python manage.py drf_create_token "$username"
+
+    # Display the created superuser information
+    echo "Superuser created:"
+    echo "Username: $username"
+    echo "Email: $email"
+  fi
+}
+
+auto_login() {
+  # Check if remote_user is provided
+  echo "username:${username}"
+  echo "password:${password}"
+    if [ -n "$username" ]; then
+      echo "authenticating...."
+      # Try to authenticate the user
+      python manage.py login_user "$username" "$password"
+      # user_id=$(python manage.py shell -c "from django.contrib.auth import authenticate; user = authenticate(username='$username', password='$password'); print(user.id if user else '')")
+      # echo "${user_id}"
+      # if [ -n "$user_id" ]; then
+      #   # Set the user ID in the session
+      #   echo "DJANGO_USER_ID=$user_id" > /tmp/django_user_id
+      #   echo "User '$username' logged in successfully."
+      # else
+      #   echo "Failed to log in user '$username'."
+      # fi
+#       python manage.py shell <<EOF
+# from django.contrib.auth import authenticate, login
+# # from django.test import RequestFactory
+
+# # Create a dummy request
+# # dummy_request = RequestFactory().get('/')
+
+# username = "$username"
+# password = "$password"
+
+
+# print(f"Username = {username}")
+# print(f"Password = {password}" )
+
+# user = authenticate(request=None, username=username, password=password)
+# if user is not None:
+#     login(request=None, user=user)
+#     print(f"User '{username}' logged in successfully.")
+# else:
+#     print(f"Failed to log in user '{username}'.")
+# EOF
+    else
+      echo "Remote user not provided. Skipping authentication."
+    fi
+}
+
+set_database_url
+
+echo "started..."
+
+python manage.py makemigrations
+# Run migrations
+python manage.py migrate
+
+# get_remote_user
+
+create_superuser
+
+# Execute DDL statements for the POSTGREST schema
+python manage.py shell <<EOF
+print(f"executing ddl...")
+from django.db import connection
+from django.db.utils import ProgrammingError
+# DDL statements
+ddl_statements = '''
+  CREATE ROLE dbt_pgrst NOLOGIN;
+  CREATE ROLE web_anon NOLOGIN;
+  REVOKE ALL ON SCHEMA public FROM dbt_pgrst, web_anon;
+  CREATE VIEW args AS SELECT * FROM analytics_args;
+  CREATE VIEW dbtlogs AS SELECT * FROM analytics_dbtlogs;
+  CREATE VIEW gitrepo AS SELECT * FROM analytics_gitrepo;
+  CREATE VIEW profileyaml AS SELECT * FROM analytics_profileyaml;
+  CREATE VIEW sshkey AS SELECT * FROM analytics_sshkey;
+  CREATE VIEW subprocesslog AS SELECT * FROM analytics_subprocesslog;
+  REVOKE ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public FROM web_anon;
+  REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public FROM web_anon;
+  REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM web_anon;
+  GRANT ALL ON TABLE args, dbtlogs, gitrepo, profileyaml, sshkey, subprocesslog TO dbt_pgrst;
+'''
+
+# Split the statements and execute non-empty ones
+ddl_statements = ddl_statements.strip().split(';')
+with connection.cursor() as cursor:
+    for statement in ddl_statements:
+        statement = statement.strip()
+        if statement:
+            try:
+                cursor.execute(statement)
+            except ProgrammingError as e:
+                # Check if the error is caused by existing roles
+                error_message = str(e)
+                if 'role' or 'relation' in error_message and 'already exists' in error_message:
+                    # Skip the statement if role already exists
+                    print(f"Skipping statement: {statement} (Role already exists)")
+                else:
+                    # Raise the exception for other errors
+                    raise e
+
+EOF
+
+# auto_login  - for calling the above function
+# python manage.py login_user ${username} ${password}  #this is the command line args, which goes to login_user, and it is also tested with positive 
+                                                     #result, but still some issue is there with session login, I don't know!
+ 
+# django-admin startproject AutomaticDjangoAuthentication
+
+python manage.py collectstatic --noinput
+# Start the Django server
+python manage.py runserver_plus 0.0.0.0:8000
